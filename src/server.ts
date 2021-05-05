@@ -2,42 +2,47 @@
 import * as net from 'net';
 import {spawn} from 'child_process';
 
-/**
- * Servidor que recibe mensajes en trozos
- */
+export type RequestType = {
+    command: string;
+    argv: string;
+  }
+
+export type ResponseType = {
+    success: boolean;
+    response: any;
+  }
+
 const server = net.createServer({allowHalfOpen: true}, (connection) => {
   console.log('A client has connected.');
 
-  // const firstData = '{"type": "change", "prevSize": 13';
-  // const secondData = ', "currSize": 27}\n';
-
-  connection.on('end', () => {
-    console.log(command);
-
-
-    const ls = spawn(command, []);
-    ls.stdout.pipe(process.stdout);
+  /* let wholeData = '';
+  connection.on('data', (dataChunk) => {
+    wholeData += dataChunk;
+    let messageLimit = wholeData.indexOf('\n');
+    while (messageLimit !== -1) {
+      const message = wholeData.substring(0, messageLimit);
+      wholeData = wholeData.substring(messageLimit + 1);
+      connection.emit('request', JSON.stringify(message));
+      messageLimit = wholeData.indexOf('\n');
+    }
+  });*/
+  let Output = '';
+  connection.on('data', (dataJson) => {
+    const request = JSON.parse(dataJson.toString());
+    console.log(request);
+    console.log(`${request.command}`);
+    const command = spawn(`${request.command}`, [`${request.argv}`]);
+    command.stdout.on('data', (piece) => Output += piece);
+    command.on('close', () => {
+      const response: ResponseType = {
+        success: true,
+        response: Output,
+      };
+      console.log(Output);
+      connection.write(JSON.stringify(response));
+      connection.end();
+    });
   });
-
-  let command = '';
-  connection.on('data', (x) => {
-    command += x;
-  });
-
-  // Envia primer trozo
-  connection.write(command);
-
-  // // Envia segundo trozo tras 500
-  // const timer = setTimeout(() => {
-  //   connection.write(secondData);
-  //   // Desde el servidor manda evento end al cliente y cierra el socket cliente (Cierre parcial)
-  //   connection.end();
-  // }, 500);
-
-  // connection.on('end', () => {
-  //   clearTimeout(timer);
-  // });
-  connection.end();
 
   connection.on('close', () => {
     console.log('A client has disconnected');

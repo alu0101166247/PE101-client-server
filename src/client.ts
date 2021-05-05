@@ -1,15 +1,8 @@
-/**
- * Socket desde el punto de vista del cliente
- */
+/* eslint-disable max-len */
 import * as net from 'net';
 import * as yargs from 'yargs';
 
-let command: string = '';
-
 const client = net.connect({port: 60300});
-
-client.write('ls');
-client.end();
 
 let wholeData = '';
 client.on('data', (dataChunk) => {
@@ -21,18 +14,23 @@ client.on('end', () => {
 });
 
 yargs.command({
-  command: 'app',
-  describe: 'Add a new note',
+  command: 'command',
+  describe: 'command',
   builder: {
-    comando: {
-      describe: 'Comando',
+    command: {
+      describe: 'command',
+      demandOption: true,
+      type: 'string',
+    },
+    argv: {
+      describe: 'argv',
       demandOption: true,
       type: 'string',
     },
   },
   handler(argv) {
-    if (typeof argv.comando === 'string') {
-      command = argv.comando;
+    if ((typeof argv.command === 'string') && (typeof argv.argv === 'string')) {
+      client.write(JSON.stringify({'command': argv.command, 'argv': argv.argv}) + '\n');
     }
   },
 });
